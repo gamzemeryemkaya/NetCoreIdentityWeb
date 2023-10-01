@@ -1,7 +1,18 @@
+using Microsoft.EntityFrameworkCore;
+using NetCoreIdentityApp.Web.Models;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+//// Ba?lant? dizesi, "SqlCon" adl? yap?land?rma ayar?ndan al?n?r.
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseSqlServer(builder.Configuration.GetConnectionString("SqlCon"));
+});
+
+builder.Services.AddIdentity<AppUser,AppRole>().AddEntityFrameworkStores<AppDbContext>();
 
 var app = builder.Build();
 
