@@ -7,12 +7,40 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+
+//------------------------------
 //// Ba?lant? dizesi, "SqlCon" adl? yap?land?rma ayar?ndan al?n?r.
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("SqlCon"));
 });
 builder.Services.AddIdentityWithExt();
+
+
+
+//------------------------------
+//Servislerin yap?land?r?lmas? s?ras?nda Application Cookie için yap?land?rmalar? belirler
+builder.Services.ConfigureApplicationCookie(opt =>
+{
+    // Yeni bir çerez yap?land?r?c?s? olu?turulur
+    var cookieBuilder = new CookieBuilder();
+
+    // Çerezin ad?n? belirler ("IdentityAppCookie" olarak ayarlanm??)
+    cookieBuilder.Name = "IdentityAppCookie";
+
+    // Giri? yapma sayfas?n? belirler (Kullan?c? giri? yapmad???nda yönlendirilece?i sayfa)
+    opt.LoginPath = new PathString("/Home/Signin");
+    // Logout i?lemi için belirtilen yolun yap?land?r?lmas?
+    opt.LogoutPath = new PathString("/Member/logout");
+    // Çerez yap?land?rmas?n? belirler
+    opt.Cookie = cookieBuilder;
+
+    // Çerezin ne kadar süre boyunca geçerli olaca??n? belirler (60 gün)
+    opt.ExpireTimeSpan = TimeSpan.FromDays(60);
+
+    // "SlidingExpiration" özelli?i, kullan?c?n?n her istek yapt???nda çerezin süresinin s?f?rlan?p s?f?rlanmayaca??n? belirler
+    opt.SlidingExpiration = true;
+});
 
 
 var app = builder.Build();

@@ -23,6 +23,14 @@ namespace NetCoreIdentityApp.Web.Extenisons
                 options.Password.RequireUppercase = false; // Büyük harf içermesinin gerekip gerekmediğini belirtir.
                 options.Password.RequireDigit = false; // Rakam içermesinin gerekip gerekmediğini belirtir.
 
+
+                // Oturum kilitlenmesi ayarlarını yapılandırır: Bir kullanıcı başarısız oturum açma girişimlerinden sonra ne kadar süre boyunca kilitlenmeli
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(3);
+
+                // Bir kullanıcının izin verilen maksimum başarısız oturum açma girişim sayısı
+                options.Lockout.MaxFailedAccessAttempts = 3;
+
+
             }).AddPasswordValidator<PasswordValidator>()
             .AddUserValidator<UserValidator>()
             .AddEntityFrameworkStores<AppDbContext>(); // Identity için kullanılacak veri bağlamını belirtir.
