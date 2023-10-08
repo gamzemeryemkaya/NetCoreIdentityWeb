@@ -28,10 +28,12 @@ namespace NetCoreIdentityApp.Web.ViewModels
         [Required(ErrorMessage = "Telefon alanı boş bırakılamaz.")]
         [Display(Name = "Telefon :")]
         public string Phone { get; set; } = null!;
+
+        [DataType(DataType.Password)]
         [Required(ErrorMessage = "Şifre alanı boş bırakılamaz.")]
         [Display(Name = "Şifre :")]
         public string Password { get; set; } = null!;
-
+        [DataType(DataType.Password)]
         [Compare(nameof(Password), ErrorMessage = "Şifre aynı değildir.")]
         [Required(ErrorMessage = "Şifre tekrar alanı boş bırakılamaz")]
         [Display(Name = "Şifre Tekrar :")]

@@ -6,6 +6,8 @@ using NetCoreIdentityApp.Web.ViewModels;
 using System.Diagnostics;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
+using System.Security.Policy;
+using NetCoreIdentityApp.Web.Services;
 
 namespace NetCoreIdentityApp.Web.Controllers
 {
@@ -14,12 +16,14 @@ namespace NetCoreIdentityApp.Web.Controllers
         private readonly ILogger<HomeController> _logger;
         private readonly UserManager<AppUser> _UserManager;
         private readonly SignInManager<AppUser> _signInManager;
+        private readonly IEmailService _emailService;
 
-        public HomeController(ILogger<HomeController> logger, UserManager<AppUser> userManager, SignInManager<AppUser> signInManager)
+        public HomeController(ILogger<HomeController> logger, UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IEmailService emailService)
         {
             _logger = logger;
             _UserManager = userManager;
             _signInManager = signInManager;
+            _emailService = emailService;
         }
 
         public IActionResult Index()
@@ -113,6 +117,95 @@ namespace NetCoreIdentityApp.Web.Controllers
             ModelState.AddModelErrorList(new List<string>() { "Email veya şifre yanlış." });
             return View();
         }
+
+
+
+        // Şifreyi unutan kullanıcılar için sayfayı görüntülemek için kullanılan kontrolör eylemi
+        public IActionResult ForgetPassword()
+        {
+            return View();
+        }
+
+        // Şifreyi unutan kullanıcıların şifre sıfırlama isteği gönderdiği HTTP POST isteğine yanıt olarak çalışan kontrolör eylemi
+        [HttpPost]
+        public async Task<IActionResult> ForgetPassword(ForgetPasswordViewModel request)
+        {
+            // Kullanıcı e-posta adresi ile aranır
+            var hasUser = await _UserManager.FindByEmailAsync(request.Email);
+
+            // Kullanıcı bulunamazsa hata eklenir ve aynı sayfaya geri dönülür
+            if (hasUser == null)
+            {
+                ModelState.AddModelError(String.Empty, "Bu email adresine sahip kullanıcı bulunamamıştır.");
+                return View();
+            }
+
+            // Şifre sıfırlama tokeni oluşturulur
+            string passwordResetToken = await _UserManager.GeneratePasswordResetTokenAsync(hasUser);
+
+            // Şifre sıfırlama bağlantısı oluşturulur
+            var passwordResetLink = Url.Action("ResetPassword", "Home", new { userId = hasUser.Id, Token = passwordResetToken }, HttpContext.Request.Scheme);
+
+            await _emailService.SendResetPasswordEmail(passwordResetLink!, hasUser.Email!);
+
+            // Başarı mesajı geçici veriye eklenir
+            TempData["SuccessMessage"] = "Şifre yenileme linki, eposta adresinize gönderilmiştir";
+
+            // Şifreyi unutan sayfasına yeniden yönlendirilir
+            return RedirectToAction(nameof(ForgetPassword));
+        }
+
+
+
+        public IActionResult ResetPassword(string userId, string token)
+        {
+            // Kullanıcıya ait userId ve token bilgilerini TempData üzerinde sakla.
+            TempData["userId"] = userId;
+            TempData["token"] = token;
+
+            // Şifre sıfırlama sayfasını görüntüle.
+            return View();
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> ResetPassword(ResetPasswordViewModel request)
+        {
+            // TempData üzerinden userId ve token bilgilerini al.
+            var userId = TempData["userId"];
+            var token = TempData["token"];
+
+            if (userId == null || token == null)
+            {
+                throw new Exception("Bir hata meydana geldi");
+            }
+
+            // Kullanıcıyı userId ile bul.
+            var hasUser = await _UserManager.FindByIdAsync(userId.ToString()!);
+
+            if (hasUser == null)
+            {
+                ModelState.AddModelError(String.Empty, "Kullanıcı bulunamamıştır.");
+                return View();
+            }
+
+            // Yeni şifreyi kullanıcı için ayarla.
+            IdentityResult result = await _UserManager.ResetPasswordAsync(hasUser, token.ToString()!, request.Password);
+
+            if (result.Succeeded)
+            {
+                TempData["SuccessMessage"] = "Şifreniz başarıyla yenilenmiştir";
+            }
+            else
+            {
+                ModelState.AddModelErrorList(result.Errors.Select(x => x.Description).ToList());
+            }
+
+            // Şifre sıfırlama sonucunu gösteren sayfayı görüntüle.
+            return View();
+        }
+
+
 
 
 
