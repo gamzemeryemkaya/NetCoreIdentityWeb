@@ -77,6 +77,11 @@ namespace NetCoreIdentityApp.Web.Controllers
         [HttpPost]
         public async Task<IActionResult> SignIn(SignInViewModel model, string? returnUrl = null)
         {
+            if (!ModelState.IsValid)
+            {
+                return View();
+            }
+
             // Eğer returnUrl belirtilmemişse, varsayılan olarak "Index" action'ına yönlendirme yapar
             returnUrl ??= Url.Action("Index", "Home");
 

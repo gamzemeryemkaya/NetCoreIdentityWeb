@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc.ModelBinding;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace NetCoreIdentityApp.Web.Extenisons
 {
@@ -13,6 +14,14 @@ namespace NetCoreIdentityApp.Web.Extenisons
                 // ModelStateDictionary'ye her hata mesajını ekler
                 // İlk parametre olarak string.Empty verilerek, hata mesajının belirli bir model özelliği ile ilişkilendirilmediği belirtilir
                 modelState.AddModelError(string.Empty, x);
+            });
+        }
+
+        public static void AddModelErrorList(this ModelStateDictionary modelState, IEnumerable<IdentityError> errors)
+        {
+            errors.ToList().ForEach(x =>
+            {
+                modelState.AddModelError(string.Empty, x.Description);
             });
         }
     }

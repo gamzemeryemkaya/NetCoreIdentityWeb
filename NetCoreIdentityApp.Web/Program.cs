@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using NetCoreIdentityApp.Web.Extenisons;
 using NetCoreIdentityApp.Web.Models;
 using NetCoreIdentityApp.Web.OptionsModels;
@@ -24,6 +25,9 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 {
     options.ValidationInterval = TimeSpan.FromMinutes(30);
 });
+
+//---------------------------------------
+builder.Services.AddSingleton<IFileProvider>(new PhysicalFileProvider(Directory.GetCurrentDirectory()));
 
 
 //--------------------------------
