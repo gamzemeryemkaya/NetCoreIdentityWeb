@@ -8,6 +8,7 @@ using NetCoreIdentityApp.Web.Models;
 
 namespace NetCoreIdentityApp.Web.Areas.Admin.Controllers
 {
+    [Authorize(Roles = "admin")]
     [Area("Admin")]
     public class RolesController : Controller
     {
@@ -18,7 +19,7 @@ namespace NetCoreIdentityApp.Web.Areas.Admin.Controllers
             _roleManager = roleManager;
             _userManager = userManager;
         }
-
+        [Authorize(Roles = "role-action")]
         public async Task<IActionResult> Index()
         {
 
@@ -34,11 +35,15 @@ namespace NetCoreIdentityApp.Web.Areas.Admin.Controllers
         }
 
 
+
+
+        [Authorize(Roles = "role-action")]
         public IActionResult RoleCreate()
         {
             return View();
         }
 
+        [Authorize(Roles = "role-action")]
         [HttpPost]
         public async Task<IActionResult> RoleCreate(RoleCreateViewModel request)
         {
@@ -57,6 +62,8 @@ namespace NetCoreIdentityApp.Web.Areas.Admin.Controllers
         }
 
 
+
+        [Authorize(Roles = "role-action")]
         public async Task<IActionResult> RoleUpdate(string id)
         {
             var roleToUpdate = await _roleManager.FindByIdAsync(id);
@@ -69,6 +76,8 @@ namespace NetCoreIdentityApp.Web.Areas.Admin.Controllers
 
             return View(new RoleUpdateViewModel() { Id = roleToUpdate.Id, Name = roleToUpdate!.Name! });
         }
+
+        [Authorize(Roles = "role-action")]
 
         [HttpPost]
         public async Task<IActionResult> RoleUpdate(RoleUpdateViewModel request)
@@ -91,7 +100,7 @@ namespace NetCoreIdentityApp.Web.Areas.Admin.Controllers
             return View();
         }
 
-
+        [Authorize(Roles = "role-action")]
         public async Task<IActionResult> RoleDelete(string id)
         {
             var roleToDelete = await _roleManager.FindByIdAsync(id);

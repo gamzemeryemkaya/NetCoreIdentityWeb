@@ -53,6 +53,8 @@ builder.Services.ConfigureApplicationCookie(opt =>
     opt.LoginPath = new PathString("/Home/Signin");
     // Logout i?lemi için belirtilen yolun yap?land?r?lmas?
     opt.LogoutPath = new PathString("/Member/logout");
+    opt.AccessDeniedPath = new PathString("/Member/AccessDenied");
+
     // Çerez yap?land?rmas?n? belirler
     opt.Cookie = cookieBuilder;
 

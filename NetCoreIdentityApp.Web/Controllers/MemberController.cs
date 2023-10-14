@@ -192,6 +192,34 @@ namespace NetCoreIdentityApp.Web.Controllers
         }
 
 
+        public IActionResult AccessDenied(string ReturnUrl)
+        {
+            string message = string.Empty;
+
+            // Erişim reddedildiğinde kullanıcıya görüntülenen ileti (hata mesajı)
+            message = "Bu sayfayı görmeye yetkiniz yoktur. Yetki almak için yöneticiniz ile görüşebilirsiniz.";
+
+            // ViewBag, görünüm dosyasına veri iletmek için kullanılan bir mekanizmadır.
+            // Burada "message" adında bir değişken, görünüm dosyasında kullanılmak üzere ViewBag'e eklenir.
+            ViewBag.message = message;
+
+            // "AccessDenied" görünümünü döndürerek erişim reddedildiğini bildiren bir sayfa görüntüler.
+            return View();
+        }
+
+        [HttpGet]
+        public IActionResult Claims()
+        {
+            var userClaimList = User.Claims.Select(x => new ClaimViewModel()
+            {
+                Issuer = x.Issuer,
+                Type = x.Type,
+                Value = x.Value
+            }).ToList();
+
+            return View(userClaimList);
+
+        }
 
     }
 }
