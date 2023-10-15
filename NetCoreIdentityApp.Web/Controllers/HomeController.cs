@@ -52,18 +52,30 @@ namespace NetCoreIdentityApp.Web.Controllers
             var identityResult = await _UserManager.CreateAsync(new() { UserName = request.UserName, PhoneNumber = request.Phone, Email = request.Email }, request.PasswordConfirm);
 
 
-            if (identityResult.Succeeded)
+            if (!identityResult.Succeeded)
             {
-                TempData["SuccessMessage"] = "Üyelik kayıt işlemi başarıla gerçekleşmiştir.";
-                return RedirectToAction(nameof(HomeController.SignUp));
+                ModelState.AddModelErrorList(identityResult.Errors.Select(x => x.Description).ToList());
+                return View();
             }
 
-            ModelState.AddModelErrorList(identityResult.Errors.Select(x => x.Description).ToList());
-            //foreach (IdentityError item in identityResult.Errors)
-            //{
-            //    ModelState.AddModelError(string.Empty, item.Description);
-            //}
-            return View();
+            var exchangeExpireClaim = new Claim("ExchangeExpireDate", DateTime.Now.AddDays(10).ToString());
+
+            var user = await _UserManager.FindByNameAsync(request.UserName);
+
+            var claimResult = await _UserManager.AddClaimAsync(user!, exchangeExpireClaim);
+
+
+            if (!claimResult.Succeeded)
+            {
+                ModelState.AddModelErrorList(claimResult.Errors.Select(x => x.Description).ToList());
+                return View();
+            }
+
+
+            TempData["SuccessMessage"] = "Üyelik kayıt işlemi başarıla gerçekleşmiştir.";
+
+            return RedirectToAction(nameof(HomeController.SignUp));
+
         }
 
         public IActionResult SignIn()
@@ -72,56 +84,56 @@ namespace NetCoreIdentityApp.Web.Controllers
             return View();
         }
 
-
-
         [HttpPost]
         public async Task<IActionResult> SignIn(SignInViewModel model, string? returnUrl = null)
         {
+            // Eğer model geçerli değilse, kullanıcıya aynı sayfayı tekrar göster
             if (!ModelState.IsValid)
             {
                 return View();
             }
 
-            // Eğer returnUrl belirtilmemişse, varsayılan olarak "Index" action'ına yönlendirme yapar
+            // Eğer 'returnUrl' boşsa, varsayılan olarak ana sayfaya yönlendir
             returnUrl ??= Url.Action("Index", "Home");
 
-            // Kullanıcının e-posta adresine göre veritabanında arama yapar
+            // Kullanıcının e-posta adresi ile kaydını kontrol et
             var hasUser = await _UserManager.FindByEmailAsync(model.Email);
 
-            // Eğer kullanıcı bulunamazsa, hata ekler ve giriş sayfasını tekrar gösterir
+            // Eğer kullanıcı yoksa, hata ekleyip aynı sayfayı tekrar göster
             if (hasUser == null)
             {
                 ModelState.AddModelError(string.Empty, "Email veya şifre yanlış");
                 return View();
             }
 
-            // Kullanıcının şifresini ve "RememberMe" seçeneğini kullanarak giriş yapmayı dener
+            // Kullanıcının şifresini ve diğer giriş bilgilerini kontrol et
             var signInResult = await _signInManager.PasswordSignInAsync(hasUser, model.Password, model.RememberMe, true);
 
-            // Giriş işlemi başarılıysa, belirtilen returnUrl'e yönlendirme yapar
-            if (signInResult.Succeeded)
-            {
-                return Redirect(returnUrl);
-            }
-
-            // Eğer kullanıcı hesabı kilitlenmişse, hata ekler ve giriş sayfasını tekrar gösterir
+            // Eğer kullanıcı hesabı kilitlenmişse, hata ekleyip aynı sayfayı tekrar göster
             if (signInResult.IsLockedOut)
             {
                 ModelState.AddModelErrorList(new List<string>() { "3 dakika boyunca giriş yapamazsınız." });
                 return View();
             }
 
-            // Giriş işlemi başarısızsa ve hatalı giriş sayısı izin verilen sınırı aşmışsa, hata ekler ve giriş sayfasını tekrar gösterir
+            // Eğer giriş başarısız olduysa, hataları ekleyip aynı sayfayı tekrar göster
             if (!signInResult.Succeeded)
             {
-                ModelState.AddModelErrorList(new List<string>() { $"Email veya şifre yanlış", $"Başarısız giriş sayısı = {await _UserManager.GetAccessFailedCountAsync(hasUser)}" });
+                var accessFailedCount = await _UserManager.GetAccessFailedCountAsync(hasUser);
+                ModelState.AddModelErrorList(new List<string>() { $"Email veya şifre yanlış", $"Başarısız giriş sayısı = {accessFailedCount}" });
                 return View();
             }
 
-            // Giriş işlemi başarısızsa, hataları ModelState'a ekler ve giriş sayfasını tekrar gösterir
-            ModelState.AddModelErrorList(new List<string>() { "Email veya şifre yanlış." });
-            return View();
+            // Eğer kullanıcının doğum tarihi varsa, doğum günü claim'ini ekler
+            if (hasUser.BirthDate.HasValue)
+            {
+                await _signInManager.SignInWithClaimsAsync(hasUser, model.RememberMe, new[] { new Claim("birthdate", hasUser.BirthDate.Value.ToString()) });
+            }
+
+            // Başarılı giriş durumunda belirtilen 'returnUrl' sayfasına yönlendir
+            return Redirect(returnUrl!);
         }
+
 
 
 

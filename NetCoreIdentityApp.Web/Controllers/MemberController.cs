@@ -178,6 +178,18 @@ namespace NetCoreIdentityApp.Web.Controllers
             await _userManager.UpdateSecurityStampAsync(currentUser);
             await _signInManager.SignOutAsync();
 
+            if (request.BirthDate.HasValue)
+            {
+                await _signInManager.SignInWithClaimsAsync(currentUser, true, new[] { new Claim("birthdate", currentUser.BirthDate!.Value.ToString()) });
+            }
+
+            else
+            {
+                await _signInManager.SignInAsync(currentUser, true);
+            }
+
+            TempData["SuccessMessage"] = "Üye bilgileri başarıyla değiştirilmiştir";
+
             var userEditViewModel = new UserEditViewModel()
             {
                 UserName = currentUser.UserName!,
@@ -220,6 +232,31 @@ namespace NetCoreIdentityApp.Web.Controllers
             return View(userClaimList);
 
         }
+
+        // Bu aksiyon sadece "AntalyaPolicy" adlı yetkilendirme politikasına sahip kullanıcılar için erişilebilirdir.
+        [Authorize(Policy = "AntalyaPolicy")]
+        [HttpGet]
+        public IActionResult AntalyaPage()
+        {
+            return View();
+        }
+        //10 gün ücretsiz deneme sayfası -policy
+
+        [Authorize(Policy = "ExchangePolicy")]
+        [HttpGet]
+        public IActionResult ExchangePage()
+        {
+            return View();
+
+        }
+        //18 yaşından küçüklere erişim sınırlama sayfa-policy
+        [Authorize(Policy = "ViolencePolicy")]
+        [HttpGet]
+        public IActionResult ViolencePage()
+        {
+            return View();
+        }
+
 
     }
 }
