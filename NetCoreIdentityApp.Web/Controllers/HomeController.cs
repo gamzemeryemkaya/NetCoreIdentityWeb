@@ -1,13 +1,13 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NetCoreIdentityApp.Web.Extenisons;
-using NetCoreIdentityApp.Web.Models;
-using NetCoreIdentityApp.Web.ViewModels;
+using NetCoreIdentityApp.Repository.Models;
+using NetCoreIdentityApp.Core.ViewModels;
 using System.Diagnostics;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using System.Security.Policy;
-using NetCoreIdentityApp.Web.Services;
+using NetCoreIdentityApp.Service.Services;
 
 namespace NetCoreIdentityApp.Web.Controllers
 {
@@ -229,7 +229,7 @@ namespace NetCoreIdentityApp.Web.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+            return View(new Core.Models.ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
     }
 }

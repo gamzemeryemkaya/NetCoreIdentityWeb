@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Options;
 using NetCoreIdentityApp.Web.CustomValidations;
 using NetCoreIdentityApp.Web.Localizations;
-using NetCoreIdentityApp.Web.Models;
+using NetCoreIdentityApp.Repository.Models;
 
 namespace NetCoreIdentityApp.Web.Extenisons
 {

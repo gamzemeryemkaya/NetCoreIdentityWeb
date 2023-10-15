@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
-using NetCoreIdentityApp.Web.Models;
+using NetCoreIdentityApp.Repository.Models;
 using System.Security.Claims;
 
 namespace NetCoreIdentityApp.Web.ClaimProvider

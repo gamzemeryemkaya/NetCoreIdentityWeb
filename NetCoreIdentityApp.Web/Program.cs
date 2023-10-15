@@ -7,12 +7,12 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using NetCoreIdentityApp.Web.ClaimProvider;
 using NetCoreIdentityApp.Web.Extenisons;
-using NetCoreIdentityApp.Web.Models;
-using NetCoreIdentityApp.Web.OptionsModels;
-using NetCoreIdentityApp.Web.PermissionsRoot;
+using NetCoreIdentityApp.Repository.Models;
+using NetCoreIdentityApp.Core.OptionsModels;
+using NetCoreIdentityApp.Core.PermissionsRoot;
 using NetCoreIdentityApp.Web.Requirements;
 using NetCoreIdentityApp.Web.Seeds;
-using NetCoreIdentityApp.Web.Services;
+using NetCoreIdentityApp.Service.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,7 +24,11 @@ builder.Services.AddControllersWithViews();
 //// Ba?lant? dizesi, "SqlCon" adl? yap?land?rma ayar?ndan al?n?r.
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    options.UseSqlServer(builder.Configuration.GetConnectionString("SqlCon"));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("SqlCon"), options =>
+    {
+        options.MigrationsAssembly("NetCoreIdentityApp.Repository");
+    }
+     );
 });
 
 
@@ -47,6 +51,9 @@ builder.Services.AddScoped<IClaimsTransformation, UserClaimProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, ExchangeExpireRequirementHandler>();
 //--
 builder.Services.AddScoped<IAuthorizationHandler, ViolenceRequirementHandler>();
+//-------
+builder.Services.AddScoped<IMemberService,MemberService>();
+
 
 builder.Services.AddAuthorization(options =>
 {

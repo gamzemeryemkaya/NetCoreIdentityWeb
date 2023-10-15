@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Razor.TagHelpers;
-using NetCoreIdentityApp.Web.Models;
+using NetCoreIdentityApp.Repository.Models;
 using System.Text;
 
-namespace NetCoreIdentityApp.Web.TagHelpers
+namespace NetCoreIdentityApp.Repository.TagHelpers
 {
     public class UserRoleNamesTagHelper : TagHelper
     {

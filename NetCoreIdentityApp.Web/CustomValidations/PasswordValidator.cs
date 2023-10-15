@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using NetCoreIdentityApp.Web.Models;
+using NetCoreIdentityApp.Repository.Models;
 
 namespace NetCoreIdentityApp.Web.CustomValidations
 {

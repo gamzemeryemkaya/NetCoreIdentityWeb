@@ -4,9 +4,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.FileProviders;
 using NetCoreIdentityApp.Web.Extenisons;
-using NetCoreIdentityApp.Web.Models;
-using NetCoreIdentityApp.Web.ViewModels;
+using NetCoreIdentityApp.Repository.Models;
+using NetCoreIdentityApp.Core.ViewModels;
 using System.Security.Claims;
+using NetCoreIdentityApp.Core.Models;
 
 namespace NetCoreIdentityApp.Web.Controllers
 {
