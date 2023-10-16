@@ -8,6 +8,7 @@ using NetCoreIdentityApp.Repository.Models;
 using NetCoreIdentityApp.Core.ViewModels;
 using System.Security.Claims;
 using NetCoreIdentityApp.Core.Models;
+using NetCoreIdentityApp.Service.Services;
 
 namespace NetCoreIdentityApp.Web.Controllers
 {
@@ -17,40 +18,23 @@ namespace NetCoreIdentityApp.Web.Controllers
         private readonly SignInManager<AppUser> _signInManager;
         private readonly UserManager<AppUser> _userManager;
         private readonly IFileProvider _fileProvider;
+        private readonly IMemberService _memberService;
+        private string userName => User.Identity!.Name!;
 
         // Dependency Injection ile SignInManager'ı alır
-        public MemberController(SignInManager<AppUser> signInManager, UserManager<AppUser> userManager, IFileProvider fileProvider)
+        public MemberController(SignInManager<AppUser> signInManager, UserManager<AppUser> userManager, IFileProvider fileProvider, IMemberService memberService)
         {
             _signInManager = signInManager;
             _userManager = userManager;
             _fileProvider = fileProvider;
+            _memberService = memberService;
         }
 
-        // Ana sayfa
+        // Ana sayfa-kodlar katmanlı mimariye uyarlandı 
         public async Task<IActionResult> Index()
         {
-            // Kullanıcı bilgilerini görüntülemek için mevcut kullanıcıyı alır
-
-            // User.Identity!.Name!, mevcut kimlik altında kullanıcı adını alır ve null olmadığını doğrular
-            var currentUser = (await _userManager.FindByNameAsync(User.Identity!.Name!))!;
-
-            // UserViewModel sınıfını kullanarak kullanıcı bilgilerini görüntülemek için bir görünüm modeli oluşturur
-
-            var userViewModel = new UserViewModel
-            {
-                // Kullanıcının e-posta adresini alır ve UserViewModel'e ekler
-                Email = currentUser.Email,
-
-                // Kullanıcının kullanıcı adını alır ve UserViewModel'e ekler
-                UserName = currentUser.UserName,
-
-                // Kullanıcının telefon numarasını alır ve UserViewModel'e ekler
-                PhoneNumber = currentUser.PhoneNumber,
-                PictureUrl = currentUser.Picture
-            };
-
             // Oluşturulan UserViewModel'i kullanarak bir görünüm döndürür
-            return View(userViewModel);
+            return View(await _memberService.GetUserViewModelByUserNameAsync(userName));
         }
 
 
@@ -58,83 +42,56 @@ namespace NetCoreIdentityApp.Web.Controllers
         public async Task Logout()
         {
             // Kullanıcıyı oturumdan çıkarır
-            await _signInManager.SignOutAsync();
+            await _memberService.LogoutAsync();
         }
 
 
 
         public IActionResult PasswordChange()
         {
+            // Şifre değiştirme sayfasını görüntüler
             return View();
         }
-
 
         [HttpPost]
         public async Task<IActionResult> PasswordChange(PasswordChangeViewModel request)
         {
-            // Eğer model geçerli değilse (örneğin, şifre değiştirme isteği geçerli değilse) sayfayı tekrar gösterir
             if (!ModelState.IsValid)
             {
+                // Eğer model geçerli değilse (örneğin, şifre değiştirme isteği geçerli değilse), sayfayı tekrar gösterir
                 return View();
             }
 
-            var currentUser = (await _userManager.FindByNameAsync(User.Identity!.Name!))!;
-
-            // Girilen eski şifrenin doğruluğunu kontrol eder
-
-            // _userManager.CheckPasswordAsync(currentUser, request.PasswordOld), mevcut kullanıcının eski şifresini doğrular
-            var checkOldPassword = await _userManager.CheckPasswordAsync(currentUser, request.PasswordOld);
-
-            if (!checkOldPassword)
+            // Kullanıcının eski şifresini kontrol etmek için IMemberService üzerinden servisi kullanır
+            if (!await _memberService.CheckPasswordAsync(userName, request.PasswordOld))
             {
+                // Eski şifre yanlışsa, hata ekler ve sayfayı tekrar gösterir
                 ModelState.AddModelError(string.Empty, "Eski şifreniz yanlış");
                 return View();
             }
 
-            // Şifre değiştirme işlemini gerçekleştirir
+            // Yeni şifre ile eski şifreyi değiştirme işlemini gerçekleştirir
+            var (isSuccess, errors) = await _memberService.ChangePasswordAsync(userName, request.PasswordOld, request.PasswordNew);
 
-            // _userManager.ChangePasswordAsync(currentUser, request.PasswordOld, request.PasswordNew), kullanıcının şifresini değiştirir
-            var resultChangePassword = await _userManager.ChangePasswordAsync(currentUser, request.PasswordOld, request.PasswordNew);
-
-            if (!resultChangePassword.Succeeded)
+            if (!isSuccess)
             {
-                ModelState.AddModelErrorList(resultChangePassword.Errors.Select(x => x.Description).ToList());
+                // Eğer şifre değiştirme işlemi başarısızsa, hata ekler ve sayfayı tekrar gösterir
+                ModelState.AddModelErrorList(errors!);
                 return View();
             }
 
-            // Şifre değiştirme işlemi başarılıysa, kullanıcının SecurityStamp günceller, oturumu kapatır ve yeni şifreyle oturum açar
-
-            // _userManager.UpdateSecurityStampAsync(currentUser), kullanıcının SecurityStamp günceller
-            await _userManager.UpdateSecurityStampAsync(currentUser);
-
-            // _signInManager.SignOutAsync(), kullanıcıyı oturumdan çıkarır
-            await _signInManager.SignOutAsync();
-
-            // _signInManager.PasswordSignInAsync(currentUser, request.PasswordNew, true, false), yeni şifre ile oturum açar
-            await _signInManager.PasswordSignInAsync(currentUser, request.PasswordNew, true, false);
-
+            // Şifre değiştirme işlemi başarılıysa, başarı mesajını geçici verilere ekler
             TempData["SuccessMessage"] = "Şifreniz başarıyla değiştirilmiştir";
+
             return View();
         }
 
         public async Task<IActionResult> UserEdit()
         {
-            ViewBag.genderList = new SelectList(Enum.GetNames(typeof(Gender)));
-            var currentUser = (await _userManager.FindByNameAsync(User.Identity!.Name!))!;
-
-            var userEditViewModel = new UserEditViewModel()
-            {
-                UserName = currentUser.UserName!,
-                Email = currentUser.Email!,
-                Phone = currentUser.PhoneNumber!,
-                BirthDate = currentUser.BirthDate,
-                City = currentUser.City,
-                Gender = currentUser.Gender,
-            };
-
-            return View(userEditViewModel);
+            // Cinsiyet seçeneklerini ViewBag üzerinden görünüme gönderir
+            ViewBag.genderList = _memberService.GetGenderSelectList();
+            return View(await _memberService.GetUserEditViewModelAsync(userName));
         }
-
 
         [HttpPost]
         public async Task<IActionResult> UserEdit(UserEditViewModel request)
@@ -144,65 +101,20 @@ namespace NetCoreIdentityApp.Web.Controllers
                 return View();
             }
 
-            var currentUser = await _userManager.FindByNameAsync(User.Identity!.Name!);
+            // Kullanıcının bilgilerini güncellemek için servisi kullanır
+            var (isSuccess, errors) = await _memberService.EditUserAsync(request, userName);
 
-            currentUser.UserName = request.UserName;
-            currentUser.Email = request.Email;
-            currentUser.PhoneNumber = request.Phone;
-            currentUser.BirthDate = request.BirthDate;
-            currentUser.City = request.City;
-            currentUser.Gender = request.Gender;
-
-            if (request.Picture != null && request.Picture.Length > 0)
+            if (!isSuccess)
             {
-                var wwwrootFolder = _fileProvider.GetDirectoryContents("wwwroot");
-
-                string randomFileName = $"{Guid.NewGuid().ToString()}{Path.GetExtension(request.Picture.FileName)}";
-
-                var newPicturePath = Path.Combine(wwwrootFolder!.First(x => x.Name == "userpictures").PhysicalPath!, randomFileName);
-
-                using var stream = new FileStream(newPicturePath, FileMode.Create);
-
-                await request.Picture.CopyToAsync(stream);
-
-                currentUser.Picture = randomFileName;
-            }
-
-            var updateToUserResult = await _userManager.UpdateAsync(currentUser);
-
-            if (!updateToUserResult.Succeeded)
-            {
-                ModelState.AddModelErrorList(updateToUserResult.Errors);
+                ModelState.AddModelErrorList(errors!);
                 return View();
-            }
-
-            await _userManager.UpdateSecurityStampAsync(currentUser);
-            await _signInManager.SignOutAsync();
-
-            if (request.BirthDate.HasValue)
-            {
-                await _signInManager.SignInWithClaimsAsync(currentUser, true, new[] { new Claim("birthdate", currentUser.BirthDate!.Value.ToString()) });
-            }
-
-            else
-            {
-                await _signInManager.SignInAsync(currentUser, true);
             }
 
             TempData["SuccessMessage"] = "Üye bilgileri başarıyla değiştirilmiştir";
 
-            var userEditViewModel = new UserEditViewModel()
-            {
-                UserName = currentUser.UserName!,
-                Email = currentUser.Email!,
-                Phone = currentUser.PhoneNumber!,
-                BirthDate = currentUser.BirthDate,
-                City = currentUser.City,
-                Gender = currentUser.Gender,
-            };
-
-            return View(userEditViewModel);
+            return View(await _memberService.GetUserEditViewModelAsync(userName));
         }
+
 
 
         public IActionResult AccessDenied(string ReturnUrl)
@@ -223,14 +135,8 @@ namespace NetCoreIdentityApp.Web.Controllers
         [HttpGet]
         public IActionResult Claims()
         {
-            var userClaimList = User.Claims.Select(x => new ClaimViewModel()
-            {
-                Issuer = x.Issuer,
-                Type = x.Type,
-                Value = x.Value
-            }).ToList();
 
-            return View(userClaimList);
+            return View(_memberService.GetClaims(User));
 
         }
 
@@ -262,3 +168,53 @@ namespace NetCoreIdentityApp.Web.Controllers
     }
 }
 
+
+
+//// katmanlı miamri için  // Kullanıcının eski şifresini kontrol etmek için servis kullanılır ve // Şifre değiştirme işlemi servis aracılığıyla gerçekleştirilir
+//[HttpPost]
+//public async Task<IActionResult> PasswordChange(PasswordChangeViewModel request)
+//{
+//    // Eğer model geçerli değilse (örneğin, şifre değiştirme isteği geçerli değilse) sayfayı tekrar gösterir
+//    if (!ModelState.IsValid)
+//    {
+//        return View();
+//    }
+
+//    var currentUser = (await _userManager.FindByNameAsync(User.Identity!.Name!))!;
+
+//    // Girilen eski şifrenin doğruluğunu kontrol eder
+
+//    // _userManager.CheckPasswordAsync(currentUser, request.PasswordOld), mevcut kullanıcının eski şifresini doğrular
+//    var checkOldPassword = await _userManager.CheckPasswordAsync(currentUser, request.PasswordOld);
+
+//    if (!checkOldPassword)
+//    {
+//        ModelState.AddModelError(string.Empty, "Eski şifreniz yanlış");
+//        return View();
+//    }
+
+//    // Şifre değiştirme işlemini gerçekleştirir
+
+//    // _userManager.ChangePasswordAsync(currentUser, request.PasswordOld, request.PasswordNew), kullanıcının şifresini değiştirir
+//    var resultChangePassword = await _userManager.ChangePasswordAsync(currentUser, request.PasswordOld, request.PasswordNew);
+
+//    if (!resultChangePassword.Succeeded)
+//    {
+//        ModelState.AddModelErrorList(resultChangePassword.Errors.Select(x => x.Description).ToList());
+//        return View();
+//    }
+
+//    // Şifre değiştirme işlemi başarılıysa, kullanıcının SecurityStamp günceller, oturumu kapatır ve yeni şifreyle oturum açar
+
+//    // _userManager.UpdateSecurityStampAsync(currentUser), kullanıcının SecurityStamp günceller
+//    await _userManager.UpdateSecurityStampAsync(currentUser);
+
+//    // _signInManager.SignOutAsync(), kullanıcıyı oturumdan çıkarır
+//    await _signInManager.SignOutAsync();
+
+//    // _signInManager.PasswordSignInAsync(currentUser, request.PasswordNew, true, false), yeni şifre ile oturum açar
+//    await _signInManager.PasswordSignInAsync(currentUser, request.PasswordNew, true, false);
+
+//    TempData["SuccessMessage"] = "Şifreniz başarıyla değiştirilmiştir";
+//    return View();
+//}
