@@ -117,13 +117,13 @@ builder.Services.AddIdentityWithExt();
 builder.Services.AddAuthentication()
     .AddFacebook(opts =>
     {
-        opts.AppId = "1038624207484121";
-        opts.AppSecret = "95559a9ec7537e49b2ab0bb96bbe70db";
+        opts.AppId = "";
+        opts.AppSecret = "";
     }).AddGoogle(opts =>
     {
-        opts.ClientId = "256248559922-n5t4nd3sj4fbgarm1qfp69n5jg2u34he.apps.googleusercontent.com";
+        opts.ClientId = "";
 
-        opts.ClientSecret = "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";
+        opts.ClientSecret = "";
     });
 
 
