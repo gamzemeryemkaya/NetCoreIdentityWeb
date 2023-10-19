@@ -13,6 +13,7 @@ using NetCoreIdentityApp.Core.PermissionsRoot;
 using NetCoreIdentityApp.Web.Requirements;
 using NetCoreIdentityApp.Web.Seeds;
 using NetCoreIdentityApp.Service.Services;
+using Microsoft.AspNetCore.Authentication.Facebook;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -111,9 +112,23 @@ builder.Services.AddAuthorization(options =>
 
 
 });
-
-
 builder.Services.AddIdentityWithExt();
+
+builder.Services.AddAuthentication()
+    .AddFacebook(opts =>
+    {
+        opts.AppId = "1038624207484121";
+        opts.AppSecret = "95559a9ec7537e49b2ab0bb96bbe70db";
+    }).AddGoogle(opts =>
+    {
+        opts.ClientId = "256248559922-n5t4nd3sj4fbgarm1qfp69n5jg2u34he.apps.googleusercontent.com";
+
+        opts.ClientSecret = "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";
+    });
+
+
+
+
 
 builder.Services.AddScoped<IEmailService, EmailService>();
 

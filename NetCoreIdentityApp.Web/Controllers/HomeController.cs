@@ -221,10 +221,123 @@ namespace NetCoreIdentityApp.Web.Controllers
             // Şifre sıfırlama sonucunu gösteren sayfayı görüntüle.
             return View();
         }
+        public IActionResult FacebookLogin(string ReturnUrl)
+        {
+            // Dönüş URL'sini oluşturuyoruz. Kullanıcı Facebook'ta oturum açtıktan sonra bu URL'ye yönlendirilecektir.
+            string RedirectUrl = Url.Action("ExternalResponse", "Home", new { ReturnUrl = ReturnUrl });
+
+            // Dış kaynak (Facebook) ile oturum açma işlemi için gereken özellikleri yapılandırıyoruz.
+            var properties = _signInManager.ConfigureExternalAuthenticationProperties("Facebook", RedirectUrl);
+
+            // Kullanıcıyı Facebook giriş sayfasına yönlendiren ChallengeResult dönüşünü gerçekleştiriyoruz.
+            return new ChallengeResult("Facebook", properties);
+        }
+
+
+        public IActionResult GoogleLogin(string ReturnUrl)
+
+        {
+            string RedirectUrl = Url.Action("ExternalResponse", "Home", new { ReturnUrl = ReturnUrl });
+
+            var properties = _signInManager.ConfigureExternalAuthenticationProperties("Google", RedirectUrl);
+
+            return new ChallengeResult("Google", properties);
+        }
 
 
 
+        public async Task<IActionResult> ExternalResponse(string ReturnUrl = "/")
+        {
+            // Dış kaynak (Facebook, Google vb.) ile giriş bilgilerini al
+            ExternalLoginInfo info = await _signInManager.GetExternalLoginInfoAsync();
 
+            // Eğer dış kaynak ile giriş bilgisi yoksa, giriş sayfasına yönlendir
+            if (info == null)
+            {
+                return RedirectToAction("SignIn");
+            }
+            else
+            {
+                // Dış kaynak ile giriş denemesi yap
+                Microsoft.AspNetCore.Identity.SignInResult result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, true);
+
+                // Eğer başarılı ise, belirtilen URL'ye yönlendir
+                if (result.Succeeded)
+                {
+                    return Redirect(ReturnUrl);
+                }
+                else
+                {
+                    // Yeni bir kullanıcı oluştur
+                    AppUser user = new AppUser();
+
+                    // Kullanıcı bilgilerini dış kaynaktan al
+                    user.Email = info.Principal.FindFirst(ClaimTypes.Email).Value;
+                    string ExternalUserId = info.Principal.FindFirst(ClaimTypes.NameIdentifier).Value;
+
+                    // Eğer dış kaynak kullanıcı adı (name) bilgisini içeriyorsa, kullanıcı adını ayarla
+                    if (info.Principal.HasClaim(x => x.Type == ClaimTypes.Name))
+                    {
+                        string userName = info.Principal.FindFirst(ClaimTypes.Name).Value;
+
+                        // Kullanıcı adında boşlukları kaldır, küçük harfe dönüştür ve benzersiz yap
+                        userName = userName.Replace(' ', '-').ToLower() + ExternalUserId.Substring(0, 5).ToString();
+
+                        user.UserName = userName;
+                    }
+                    else
+                    {
+                        // Eğer dış kaynak kullanıcı adı bilgisi yoksa, kullanıcı adını e-posta olarak ayarla
+                        user.UserName = info.Principal.FindFirst(ClaimTypes.Email).Value;
+                    }
+
+                    // Eğer bu e-postaya sahip kullanıcı henüz mevcut değilse, yeni bir kullanıcı oluştur
+                    AppUser user2 = await _UserManager.FindByEmailAsync(user.Email);
+
+                    if (user2 == null)
+                    {
+                        // Yeni kullanıcı oluştur
+                        IdentityResult createResult = await _UserManager.CreateAsync(user);
+
+                        // Kullanıcı oluşturma işlemi başarılı ise, kullanıcıyı dış kaynak ile ilişkilendir
+                        if (createResult.Succeeded)
+                        {
+                            IdentityResult loginResult = await _UserManager.AddLoginAsync(user, info);
+
+                            // Dış kaynak ile ilişkilendirme başarılı ise, kullanıcıyı oturum açtır ve belirtilen URL'ye yönlendir
+                            if (loginResult.Succeeded)
+                            {
+                                await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, true);
+                                return Redirect(ReturnUrl);
+                            }
+                            else
+                            {
+                                // Dış kaynak ile ilişkilendirme başarısız ise, hata mesajı ekle
+                                ModelState.AddModelError("",loginResult.Errors.ToString());
+                            }
+                        }
+                        else
+                        {
+                            // Kullanıcı oluşturma işlemi başarısız ise, oluşan hataları ModelState'e ekle
+                            ModelState.AddModelError("", createResult.Errors.ToString());
+                        }
+                    }
+                    else
+                    {
+                        // Eğer aynı e-postaya sahip kullanıcı zaten mevcutsa, kullanıcıyı dış kaynak ile ilişkilendir
+                        IdentityResult loginResult = await _UserManager.AddLoginAsync(user2, info);
+
+                        // Dış kaynak ile ilişkilendirme işlemi başarılı ise, kullanıcıyı oturum açtır ve belirtilen URL'ye yönlendir
+                        await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, true);
+                        return Redirect(ReturnUrl);
+                    }
+                }
+            }
+
+            List<string> errors = ModelState.Values.SelectMany(x => x.Errors).Select(y => y.ErrorMessage).ToList();
+
+            return View("Error", errors);
+        }
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
